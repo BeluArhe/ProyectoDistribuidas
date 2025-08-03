@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Productos - DataRetail</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>Gestión de Productos (Tabla Replicada)</h1>
+        </div>
+    </header>
+    
+    <div class="container">
+        <nav>
+            <ul>
+                <li><a href="/">Inicio</a></li>
+                <li><a href="/products">Productos</a></li>
+                <li><a href="/customers">Clientes</a></li>
+                <li><a href="/sucursales">Sucursales</a></li>
+                <li><a href="/empleados">Empleados</a></li>
+                <li><a href="/tarjetas">Tarjetas</a></li>
+                <li><a href="/fabricas">Fábricas</a></li>
+                <li><a href="/auditoria">Auditoría</a></li>
+            </ul>
+        </nav>
+        
+        <!-- Formulario para agregar/editar productos -->
+        <div class="form-container">
+            <h3 id="form-title">Agregar Nuevo Producto</h3>
+            <form id="product-form">
+                <div class="form-group">
+                    <label for="nombre">Nombre del Producto:</label>
+                    <input type="text" id="nombre" name="nombre" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="precio">Precio:</label>
+                    <input type="number" id="precio" name="precio" step="0.01" required>
+                </div>
+                
+                <button type="submit" class="btn btn-primary" id="submit-btn">Agregar Producto</button>
+                <button type="button" class="btn btn-warning" id="cancel-btn" style="display: none;">Cancelar</button>
+            </form>
+        </div>
+        
+        <!-- Tabla de productos -->
+        <div class="table-container">
+            <h3>Lista de Productos</h3>
+            <div id="alert-container"></div>
+            <table id="products-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Nombre</th>
+                        <th>Precio</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="products-tbody">
+                    <!-- Los productos se cargarán aquí -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/products.js') }}"></script>
+</body>
+</html>

@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DataRetail - Sistema de Gestión</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/modern.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <h1><i class="fas fa-database"></i> DataRetail</h1>
+        <p class="subtitle">Sistema de Gestión de Base de Datos Oracle</p>
+    </header>
+
+    <!-- Main Container -->
+    <div class="container">
+        <!-- Estadísticas -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-number" id="total-productos">-</div>
+                <div class="stat-label">Productos</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="total-clientes">-</div>
+                <div class="stat-label">Clientes</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="total-sucursales">-</div>
+                <div class="stat-label">Sucursales</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="total-empleados">-</div>
+                <div class="stat-label">Empleados</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="total-tarjetas">-</div>
+                <div class="stat-label">Tarjetas</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="total-fabricas">-</div>
+                <div class="stat-label">Fábricas</div>
+            </div>
+        </div>
+
+        <!-- Navigation Grid -->
+        <div class="nav-container">
+            <div class="nav-grid">
+                <!-- Productos -->
+                <div class="nav-card productos" onclick="window.location.href='/productos'">
+                    <i class="fas fa-box nav-icon"></i>
+                    <h3>Productos</h3>
+                    <p>Gestiona tu catálogo de productos</p>
+                </div>
+
+                <!-- Clientes -->
+                <div class="nav-card clientes" onclick="window.location.href='/clientes'">
+                    <i class="fas fa-users nav-icon"></i>
+                    <h3>Clientes</h3>
+                    <p>Administra información de clientes</p>
+                </div>
+
+                <!-- Sucursales -->
+                <div class="nav-card sucursales" onclick="window.location.href='/sucursales'">
+                    <i class="fas fa-store nav-icon"></i>
+                    <h3>Sucursales</h3>
+                    <p>Controla tus puntos de venta</p>
+                </div>
+
+                <!-- Empleados -->
+                <div class="nav-card empleados" onclick="window.location.href='/empleados'">
+                    <i class="fas fa-user-tie nav-icon"></i>
+                    <h3>Empleados</h3>
+                    <p>Gestiona tu equipo de trabajo</p>
+                </div>
+
+                <!-- Tarjetas -->
+                <div class="nav-card tarjetas" onclick="window.location.href='/tarjetas'">
+                    <i class="fas fa-credit-card nav-icon"></i>
+                    <h3>Tarjetas</h3>
+                    <p>Administra métodos de pago</p>
+                </div>
+
+                <!-- Fábricas -->
+                <div class="nav-card fabricas" onclick="window.location.href='/fabricas'">
+                    <i class="fas fa-industry nav-icon"></i>
+                    <h3>Fábricas</h3>
+                    <p>Controla proveedores y fabricantes</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script>
+        // Cargar estadísticas al iniciar
+        document.addEventListener('DOMContentLoaded', function() {
+            loadStats();
+        });
+
+        async function loadStats() {
+            try {
+                // Productos
+                const productos = await fetch('/api/products');
+                const productosData = await productos.json();
+                document.getElementById('total-productos').textContent = productosData.length;
+
+                // Clientes
+                const clientes = await fetch('/api/customers');
+                const clientesData = await clientes.json();
+                document.getElementById('total-clientes').textContent = clientesData.length;
+
+                // Sucursales
+                const sucursales = await fetch('/api/sucursales');
+                const sucursalesData = await sucursales.json();
+                document.getElementById('total-sucursales').textContent = sucursalesData.length;
+
+                // Empleados
+                const empleados = await fetch('/api/empleados');
+                const empleadosData = await empleados.json();
+                document.getElementById('total-empleados').textContent = empleadosData.length;
+
+                // Tarjetas
+                const tarjetas = await fetch('/api/tarjetas');
+                const tarjetasData = await tarjetas.json();
+                document.getElementById('total-tarjetas').textContent = tarjetasData.length;
+
+                // Fábricas
+                const fabricas = await fetch('/api/fabricas');
+                const fabricasData = await fabricas.json();
+                document.getElementById('total-fabricas').textContent = fabricasData.length;
+
+            } catch (error) {
+                console.error('Error cargando estadísticas:', error);
+                // Si hay error, mostrar 0 en lugar de -
+                document.querySelectorAll('.stat-number').forEach(el => {
+                    if (el.textContent === '-') el.textContent = '0';
+                });
+            }
+        }
+
+        // Efectos visuales
+        document.querySelectorAll('.nav-card').forEach(card => {
+            card.addEventListener('mouseenter', function() {
+                this.style.transform = 'translateY(-8px) scale(1.02)';
+            });
+            
+            card.addEventListener('mouseleave', function() {
+                this.style.transform = 'translateY(0) scale(1)';
+            });
+        });
+    </script>
+</body>
+</html>

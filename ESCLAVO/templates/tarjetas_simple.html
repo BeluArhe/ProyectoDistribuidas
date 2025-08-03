@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tarjetas - DataRetail</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background-color: #f5f5f5; }
+        .container { max-width: 1000px; margin: 0 auto; }
+        h1 { color: #333; text-align: center; }
+        .buttons-container { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; text-align: center; }
+        .btn { padding: 12px 24px; margin: 5px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; }
+        .btn-insert { background: #28a745; color: white; }
+        .btn-update { background: #ffc107; color: black; }
+        .btn-delete { background: #dc3545; color: white; }
+        .btn-refresh { background: #007bff; color: white; }
+        .btn:hover { opacity: 0.8; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .form-container { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; display: none; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
+        input[readonly] { background-color: #f8f9fa; }
+        table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
+        th { background: #007bff; color: white; }
+        tr:hover { background: #f8f9fa; }
+        tr.selected { background: #e3f2fd; }
+        .alert { padding: 15px; margin-bottom: 20px; border-radius: 4px; }
+        .alert-success { background: #d4edda; color: #155724; }
+        .alert-error { background: #f8d7da; color: #721c24; }
+        .back-btn { background: #6c757d; color: white; padding: 10px 20px; border: none; border-radius: 4px; margin-bottom: 20px; }
+        .status-active { color: #28a745; font-weight: bold; }
+        .status-inactive { color: #dc3545; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>💳 Gestión de Tarjetas</h1>
+        
+        <a href="/" style="text-decoration: none;">
+            <button class="back-btn">← Volver al Dashboard</button>
+        </a>
+
+        <div id="alerts"></div>
+
+        <!-- 4 BOTONES PRINCIPALES -->
+        <div class="buttons-container">
+            <h3>Operaciones CRUD</h3>
+            <button class="btn btn-insert" onclick="showInsertForm()">➕ INSERTAR</button>
+            <button class="btn btn-update" onclick="showUpdateForm()" id="updateBtn" disabled>✏️ ACTUALIZAR</button>
+            <button class="btn btn-delete" onclick="deleteSelected()" id="deleteBtn" disabled>🗑️ BORRAR</button>
+            <button class="btn btn-refresh" onclick="refreshTable()">🔄 REFRESCAR</button>
+        </div>
+
+        <!-- FORMULARIO INSERTAR/ACTUALIZAR -->
+        <div class="form-container" id="formContainer">
+            <h3 id="formTitle">Insertar Tarjeta</h3>
+            <form id="tarjetaForm">
+                <input type="hidden" id="tarjetaId">
+                <div class="form-group">
+                    <label for="numero">Número de Tarjeta *</label>
+                    <input type="text" id="numero" required pattern="[0-9]{16}" maxlength="16" 
+                           placeholder="1234567890123456">
+                </div>
+                <div class="form-group">
+                    <label for="tipo">Tipo de Tarjeta *</label>
+                    <input type="text" id="tipo" required placeholder="Débito/Crédito">
+                </div>
+                <div class="form-group">
+                    <button type="submit" class="btn btn-insert">💾 Guardar</button>
+                    <button type="button" class="btn" onclick="hideForm()" style="background: #6c757d; color: white;">❌ Cancelar</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- TABLA DE DATOS -->
+        <div style="background: white; padding: 20px; border-radius: 8px;">
+            <h3>📋 Lista de Tarjetas (Total: <span id="total-count">0</span>)</h3>
+            <p style="color: #666; margin-bottom: 15px;">Haz clic en una fila para seleccionarla</p>
+            
+            <div id="loading" style="text-align: center; padding: 20px;">
+                Cargando tarjetas...
+            </div>
+
+            <table id="tarjetasTable" style="display: none;">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Número</th>
+                        <th>Tipo</th>
+                    </tr>
+                </thead>
+                <tbody id="tarjetasTableBody"></tbody>
+            </table>
+
+            <div id="no-tarjetas" style="display: none; text-align: center; padding: 40px;">
+                <h3>💳 No hay tarjetas registradas</h3>
+                <p>Usa el botón INSERTAR para agregar tarjetas</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let selectedTarjetaId = null;
+        let isUpdating = false;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            refreshTable();
+        });
+
+        async function refreshTable() {
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('tarjetasTable').style.display = 'none';
+            document.getElementById('no-tarjetas').style.display = 'none';
+            clearSelection();
+
+            try {
+                const response = await fetch('/api/tarjetas');
+                const result = await response.json();
+                
+                // Manejar diferentes formatos de respuesta
+                let tarjetas;
+                if (result.success && result.data) {
+                    tarjetas = result.data;
+                } else if (Array.isArray(result)) {
+                    tarjetas = result;
+                } else {
+                    console.error('Formato de respuesta inesperado:', result);
+                    tarjetas = [];
+                }
+                
+                const tbody = document.getElementById('tarjetasTableBody');
+                tbody.innerHTML = '';
+
+                if (tarjetas.length === 0) {
+                    document.getElementById('no-tarjetas').style.display = 'block';
+                } else {
+                    tarjetas.forEach(tarjeta => {
+                        const row = document.createElement('tr');
+                        
+                        // Manejar campos en minúsculas y mayúsculas
+                        const id = tarjeta.id_tarjeta || tarjeta.ID_TARJETA;
+                        const numero = tarjeta.numero || tarjeta.NUMERO;
+                        const tipo = tarjeta.tipo || tarjeta.TIPO;
+                        
+                        row.onclick = () => selectRow(id, row);
+                        
+                        row.innerHTML = `
+                            <td>${id}</td>
+                            <td>**** **** **** ${numero ? numero.slice(-4) : '????'}</td>
+                            <td>${tipo || 'N/A'}</td>
+                        `;
+                        tbody.appendChild(row);
+                    });
+                    document.getElementById('tarjetasTable').style.display = 'table';
+                }
+                document.getElementById('total-count').textContent = tarjetas.length;
+                showAlert('Tabla actualizada correctamente', 'success');
+            } catch (error) {
+                console.error('Error al cargar tarjetas:', error);
+                showAlert('Error al cargar tarjetas', 'error');
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+            }
+        }
+
+        function showInsertForm() {
+            isUpdating = false;
+            document.getElementById('formTitle').textContent = 'Insertar Nueva Tarjeta';
+            document.getElementById('tarjetaForm').reset();
+            document.getElementById('tarjetaId').value = '';
+            document.getElementById('formContainer').style.display = 'block';
+        }
+
+        async function showUpdateForm() {
+            if (!selectedTarjetaId) {
+                showAlert('Selecciona una tarjeta para actualizar', 'error');
+                return;
+            }
+
+            isUpdating = true;
+            try {
+                const response = await fetch(`/api/tarjetas/${selectedTarjetaId}`);
+                const tarjeta = await response.json();
+
+                if (response.ok) {
+                    document.getElementById('formTitle').textContent = 'Actualizar Tarjeta';
+                    document.getElementById('tarjetaId').value = tarjeta.id_tarjeta;
+                    document.getElementById('numero').value = tarjeta.numero;
+                    document.getElementById('tipo').value = tarjeta.tipo;
+                    document.getElementById('formContainer').style.display = 'block';
+                } else {
+                    showAlert('Error al cargar tarjeta', 'error');
+                }
+            } catch (error) {
+                showAlert('Error de conexión', 'error');
+            }
+        }
+
+        async function deleteSelected() {
+            if (!selectedTarjetaId) {
+                showAlert('Selecciona una tarjeta para eliminar', 'error');
+                return;
+            }
+
+            if (!confirm('¿Estás seguro de que deseas eliminar esta tarjeta?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/tarjetas/${selectedTarjetaId}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    showAlert('Tarjeta eliminada correctamente', 'success');
+                    refreshTable();
+                } else {
+                    const error = await response.json();
+                    showAlert(error.error || 'Error al eliminar tarjeta', 'error');
+                }
+            } catch (error) {
+                showAlert('Error de conexión', 'error');
+            }
+        }
+
+        document.getElementById('tarjetaForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const tarjetaData = {
+                numero: document.getElementById('numero').value,
+                tipo: document.getElementById('tipo').value
+            };
+
+            try {
+                let response;
+                if (isUpdating) {
+                    response = await fetch(`/api/tarjetas/${selectedTarjetaId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(tarjetaData)
+                    });
+                } else {
+                    response = await fetch('/api/tarjetas', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(tarjetaData)
+                    });
+                }
+
+                if (response.ok) {
+                    const message = isUpdating ? 'Tarjeta actualizada correctamente' : 'Tarjeta insertada correctamente';
+                    showAlert(message, 'success');
+                    hideForm();
+                    refreshTable();
+                } else {
+                    const error = await response.json();
+                    showAlert(error.error || 'Error al guardar tarjeta', 'error');
+                }
+            } catch (error) {
+                showAlert('Error de conexión', 'error');
+            }
+        });
+
+        function selectRow(id, row) {
+            document.querySelectorAll('tr').forEach(r => r.classList.remove('selected'));
+            row.classList.add('selected');
+            selectedTarjetaId = id;
+            document.getElementById('updateBtn').disabled = false;
+            document.getElementById('deleteBtn').disabled = false;
+        }
+
+        function clearSelection() {
+            selectedTarjetaId = null;
+            document.getElementById('updateBtn').disabled = true;
+            document.getElementById('deleteBtn').disabled = true;
+            document.querySelectorAll('tr').forEach(r => r.classList.remove('selected'));
+        }
+
+        function hideForm() {
+            document.getElementById('formContainer').style.display = 'none';
+            clearSelection();
+        }
+
+        function showAlert(message, type) {
+            const alertsContainer = document.getElementById('alerts');
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type}`;
+            alert.textContent = message;
+            alertsContainer.appendChild(alert);
+            setTimeout(() => alert.remove(), 5000);
+        }
+    </script>
+</body>
+</html>

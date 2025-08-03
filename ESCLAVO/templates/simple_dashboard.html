@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DataRetail - Dashboard</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 20px; 
+            background-color: #f5f5f5; 
+        }
+        h1 { 
+            color: #333; 
+            text-align: center; 
+        }
+        .container { 
+            max-width: 1000px; 
+            margin: 0 auto; 
+        }
+        .grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); 
+            gap: 20px; 
+            margin-top: 30px; 
+        }
+        .card { 
+            background: white; 
+            padding: 20px; 
+            border-radius: 8px; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
+            text-align: center; 
+            text-decoration: none; 
+            color: #333; 
+        }
+        .card:hover { 
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2); 
+        }
+        .stats { 
+            background: white; 
+            padding: 20px; 
+            border-radius: 8px; 
+            margin-bottom: 20px; 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); 
+            gap: 15px; 
+        }
+        .stat { 
+            text-align: center; 
+        }
+        .stat-number { 
+            font-size: 24px; 
+            font-weight: bold; 
+            color: #007bff; 
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📊 DataRetail - Sistema de Gestión</h1>
+        
+        <!-- Estadísticas -->
+        <div class="stats">
+            <div class="stat">
+                <div class="stat-number" id="total-productos">-</div>
+                <div>Productos</div>
+            </div>
+            <div class="stat">
+                <div class="stat-number" id="total-clientes">-</div>
+                <div>Clientes</div>
+            </div>
+            <div class="stat">
+                <div class="stat-number" id="total-sucursales">-</div>
+                <div>Sucursales</div>
+            </div>
+            <div class="stat">
+                <div class="stat-number" id="total-empleados">-</div>
+                <div>Empleados</div>
+            </div>
+            <div class="stat">
+                <div class="stat-number" id="total-tarjetas">-</div>
+                <div>Tarjetas</div>
+            </div>
+            <div class="stat">
+                <div class="stat-number" id="total-fabricas">-</div>
+                <div>Fábricas</div>
+            </div>
+        </div>
+
+        <!-- Navegación -->
+        <div class="grid">
+            <a href="/productos" class="card">
+                <h3>📦 Productos</h3>
+                <p>Gestiona tu catálogo de productos</p>
+            </a>
+            
+            <a href="/clientes" class="card">
+                <h3>👥 Clientes</h3>
+                <p>Administra información de clientes</p>
+            </a>
+            
+            <a href="/sucursales" class="card">
+                <h3>🏪 Sucursales</h3>
+                <p>Controla tus puntos de venta</p>
+            </a>
+            
+            <a href="/empleados" class="card">
+                <h3>👔 Empleados</h3>
+                <p>Gestiona tu equipo de trabajo</p>
+            </a>
+            
+            <a href="/tarjetas" class="card">
+                <h3>💳 Tarjetas</h3>
+                <p>Administra métodos de pago</p>
+            </a>
+            
+            <a href="/fabricas" class="card">
+                <h3>🏭 Fábricas</h3>
+                <p>Controla proveedores y fabricantes</p>
+            </a>
+        </div>
+    </div>
+
+    <script>
+        // Cargar estadísticas
+        async function loadStats() {
+            try {
+                const [productos, clientes, sucursales, empleados, tarjetas, fabricas] = await Promise.all([
+                    fetch('/api/products').then(r => r.json()),
+                    fetch('/api/customers').then(r => r.json()),
+                    fetch('/api/sucursales').then(r => r.json()),
+                    fetch('/api/empleados').then(r => r.json()),
+                    fetch('/api/tarjetas').then(r => r.json()),
+                    fetch('/api/fabricas').then(r => r.json())
+                ]);
+
+                document.getElementById('total-productos').textContent = productos.length;
+                document.getElementById('total-clientes').textContent = clientes.length;
+                document.getElementById('total-sucursales').textContent = sucursales.length;
+                document.getElementById('total-empleados').textContent = empleados.length;
+                document.getElementById('total-tarjetas').textContent = tarjetas.length;
+                document.getElementById('total-fabricas').textContent = fabricas.length;
+            } catch (error) {
+                console.error('Error:', error);
+                document.querySelectorAll('.stat-number').forEach(el => {
+                    if (el.textContent === '-') el.textContent = '0';
+                });
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', loadStats);
+    </script>
+</body>
+</html>

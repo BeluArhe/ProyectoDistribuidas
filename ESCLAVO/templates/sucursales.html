@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Sucursales - DataRetail</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>Gestión de Sucursales (Fragmentada - Quito-Sur)</h1>
+        </div>
+    </header>
+    
+    <div class="container">
+        <nav>
+            <ul>
+                <li><a href="/">Inicio</a></li>
+                <li><a href="/products">Productos</a></li>
+                <li><a href="/customers">Clientes</a></li>
+                <li><a href="/sucursales">Sucursales</a></li>
+                <li><a href="/empleados">Empleados</a></li>
+                <li><a href="/tarjetas">Tarjetas</a></li>
+                <li><a href="/fabricas">Fábricas</a></li>
+                <li><a href="/auditoria">Auditoría</a></li>
+            </ul>
+        </nav>
+        
+        <!-- Formulario para agregar/editar sucursales -->
+        <div class="form-container">
+            <h3 id="form-title">Agregar Nueva Sucursal</h3>
+            <p><strong>Nota:</strong> Todas las sucursales se registran automáticamente en "Quito-Sur"</p>
+            <form id="sucursal-form">
+                <div class="form-group">
+                    <label for="nombre">Nombre de la Sucursal:</label>
+                    <input type="text" id="nombre" name="nombre" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="direccion">Dirección:</label>
+                    <textarea id="direccion" name="direccion" rows="3" required></textarea>
+                </div>
+                
+                <button type="submit" class="btn btn-primary" id="submit-btn">Agregar Sucursal</button>
+                <button type="button" class="btn btn-warning" id="cancel-btn" style="display: none;">Cancelar</button>
+            </form>
+        </div>
+        
+        <!-- Tabla de sucursales -->
+        <div class="table-container">
+            <h3>Lista de Sucursales de Quito-Sur</h3>
+            <div id="alert-container"></div>
+            <table id="sucursales-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Nombre</th>
+                        <th>Ciudad</th>
+                        <th>Dirección</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="sucursales-tbody">
+                    <!-- Las sucursales se cargarán aquí -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // Variables globales
+        let editingSucursalId = null;
+        
+        // Elementos del DOM
+        const sucursalForm = document.getElementById('sucursal-form');
+        const formTitle = document.getElementById('form-title');
+        const submitBtn = document.getElementById('submit-btn');
+        const cancelBtn = document.getElementById('cancel-btn');
+        const alertContainer = document.getElementById('alert-container');
+        const sucursalesTableBody = document.getElementById('sucursales-tbody');
+        
+        // Inicializar cuando la página carga
+        document.addEventListener('DOMContentLoaded', function() {
+            loadSucursales();
+            
+            // Event listener para el formulario
+            sucursalForm.addEventListener('submit', handleFormSubmit);
+            
+            // Event listener para el botón cancelar
+            cancelBtn.addEventListener('click', cancelEdit);
+        });
+        
+        // Cargar todas las sucursales
+        async function loadSucursales() {
+            try {
+                const response = await fetch('/api/sucursales');
+                const data = await response.json();
+                
+                if (data.success) {
+                    displaySucursales(data.data);
+                } else {
+                    showAlert('Error al cargar sucursales: ' + data.error, 'error');
+                }
+            } catch (error) {
+                showAlert('Error de conexión: ' + error.message, 'error');
+            }
+        }
+        
+        // Mostrar sucursales en la tabla
+        function displaySucursales(sucursales) {
+            sucursalesTableBody.innerHTML = '';
+            
+            if (sucursales.length === 0) {
+                sucursalesTableBody.innerHTML = '<tr><td colspan="5" style="text-align: center;">No hay sucursales registradas</td></tr>';
+                return;
+            }
+            
+            sucursales.forEach(sucursal => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${sucursal.ID_SUCURSAL}</td>
+                    <td>${sucursal.NOMBRE}</td>
+                    <td>${sucursal.CIUDAD}</td>
+                    <td>${sucursal.DIRECCION}</td>
+                    <td>
+                        <button class="btn btn-warning" onclick="editSucursal(${sucursal.ID_SUCURSAL})">Editar</button>
+                        <button class="btn btn-danger" onclick="deleteSucursal(${sucursal.ID_SUCURSAL})">Eliminar</button>
+                    </td>
+                `;
+                sucursalesTableBody.appendChild(row);
+            });
+        }
+        
+        // Manejar envío del formulario
+        async function handleFormSubmit(event) {
+            event.preventDefault();
+            
+            const formData = new FormData(sucursalForm);
+            const sucursalData = {
+                nombre: formData.get('nombre'),
+                direccion: formData.get('direccion')
+            };
+            
+            try {
+                let response;
+                if (editingSucursalId) {
+                    // Actualizar sucursal existente
+                    response = await fetch(`/api/sucursales/${editingSucursalId}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(sucursalData)
+                    });
+                } else {
+                    // Crear nueva sucursal
+                    response = await fetch('/api/sucursales', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(sucursalData)
+                    });
+                }
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showAlert(data.message, 'success');
+                    resetForm();
+                    loadSucursales();
+                } else {
+                    showAlert('Error: ' + data.error, 'error');
+                }
+            } catch (error) {
+                showAlert('Error de conexión: ' + error.message, 'error');
+            }
+        }
+        
+        // Editar sucursal
+        async function editSucursal(sucursalId) {
+            try {
+                const response = await fetch(`/api/sucursales/${sucursalId}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    const sucursal = data.data;
+                    
+                    // Llenar el formulario con los datos de la sucursal
+                    document.getElementById('nombre').value = sucursal.NOMBRE;
+                    document.getElementById('direccion').value = sucursal.DIRECCION;
+                    
+                    // Cambiar el estado del formulario a modo edición
+                    editingSucursalId = sucursalId;
+                    formTitle.textContent = 'Editar Sucursal';
+                    submitBtn.textContent = 'Actualizar Sucursal';
+                    cancelBtn.style.display = 'inline-block';
+                    
+                    // Scroll al formulario
+                    document.querySelector('.form-container').scrollIntoView({ behavior: 'smooth' });
+                    
+                } else {
+                    showAlert('Error al cargar sucursal: ' + data.error, 'error');
+                }
+            } catch (error) {
+                showAlert('Error de conexión: ' + error.message, 'error');
+            }
+        }
+        
+        // Eliminar sucursal
+        async function deleteSucursal(sucursalId) {
+            if (!confirm('¿Estás seguro de que quieres eliminar esta sucursal?')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/sucursales/${sucursalId}`, {
+                    method: 'DELETE'
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showAlert(data.message, 'success');
+                    loadSucursales();
+                } else {
+                    showAlert('Error: ' + data.error, 'error');
+                }
+            } catch (error) {
+                showAlert('Error de conexión: ' + error.message, 'error');
+            }
+        }
+        
+        // Cancelar edición
+        function cancelEdit() {
+            resetForm();
+        }
+        
+        // Resetear formulario
+        function resetForm() {
+            sucursalForm.reset();
+            editingSucursalId = null;
+            formTitle.textContent = 'Agregar Nueva Sucursal';
+            submitBtn.textContent = 'Agregar Sucursal';
+            cancelBtn.style.display = 'none';
+        }
+        
+        // Mostrar alerta
+        function showAlert(message, type) {
+            const alertClass = type === 'success' ? 'alert-success' : 'alert-error';
+            const alertHTML = `
+                <div class="alert ${alertClass}">
+                    ${message}
+                </div>
+            `;
+            
+            alertContainer.innerHTML = alertHTML;
+            
+            // Auto-hide alert after 5 seconds
+            setTimeout(() => {
+                alertContainer.innerHTML = '';
+            }, 5000);
+        }
+    </script>
+</body>
+</html>

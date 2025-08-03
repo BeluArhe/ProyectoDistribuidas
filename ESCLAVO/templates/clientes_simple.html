@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clientes - DataRetail</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background-color: #f5f5f5; }
+        .container { max-width: 1000px; margin: 0 auto; }
+        h1 { color: #333; text-align: center; }
+        .buttons-container { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; text-align: center; }
+        .btn { padding: 12px 24px; margin: 5px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; }
+        .btn-insert { background: #28a745; color: white; }
+        .btn-update { background: #ffc107; color: black; }
+        .btn-delete { background: #dc3545; color: white; }
+        .btn-refresh { background: #007bff; color: white; }
+        .btn:hover { opacity: 0.8; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .form-container { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; display: none; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
+        input[readonly] { background-color: #f8f9fa; }
+        table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
+        th { background: #007bff; color: white; }
+        tr:hover { background: #f8f9fa; }
+        tr.selected { background: #e3f2fd; }
+        .alert { padding: 15px; margin-bottom: 20px; border-radius: 4px; }
+        .alert-success { background: #d4edda; color: #155724; }
+        .alert-error { background: #f8d7da; color: #721c24; }
+        .back-btn { background: #6c757d; color: white; padding: 10px 20px; border: none; border-radius: 4px; margin-bottom: 20px; }
+        small { color: #666; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>👥 Gestión de Clientes</h1>
+        
+        <a href="/" style="text-decoration: none;">
+            <button class="back-btn">← Volver al Dashboard</button>
+        </a>
+
+        <div id="alerts"></div>
+
+        <!-- 4 BOTONES PRINCIPALES -->
+        <div class="buttons-container">
+            <h3>Operaciones CRUD</h3>
+            <button class="btn btn-insert" onclick="showInsertForm()">➕ INSERTAR</button>
+            <button class="btn btn-update" onclick="showUpdateForm()" id="updateBtn" disabled>✏️ ACTUALIZAR</button>
+            <button class="btn btn-delete" onclick="deleteSelected()" id="deleteBtn" disabled>🗑️ BORRAR</button>
+            <button class="btn btn-refresh" onclick="refreshTable()">🔄 REFRESCAR</button>
+        </div>
+
+        <!-- FORMULARIO INSERTAR/ACTUALIZAR -->
+        <div class="form-container" id="formContainer">
+            <h3 id="formTitle">Insertar Cliente</h3>
+            <form id="clienteForm">
+                <input type="hidden" id="clienteId">
+                <div class="form-group">
+                    <label for="nombre">Nombre Completo *</label>
+                    <input type="text" id="nombre" required>
+                </div>
+                <div class="form-group">
+                    <label for="direccion">Dirección</label>
+                    <input type="text" id="direccion" value="Chillogallo" readonly>
+                    <small>La dirección está fija para esta ubicación</small>
+                </div>
+                <div class="form-group">
+                    <label for="telefono">Teléfono</label>
+                    <input type="tel" id="telefono">
+                </div>
+                <div class="form-group">
+                    <button type="submit" class="btn btn-insert">💾 Guardar</button>
+                    <button type="button" class="btn" onclick="hideForm()" style="background: #6c757d; color: white;">❌ Cancelar</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- TABLA DE DATOS -->
+        <div style="background: white; padding: 20px; border-radius: 8px;">
+            <h3>📋 Lista de Clientes (Total: <span id="total-count">0</span>)</h3>
+            <p style="color: #666; margin-bottom: 15px;">Haz clic en una fila para seleccionarla</p>
+            
+            <div id="loading" style="text-align: center; padding: 20px;">
+                Cargando clientes...
+            </div>
+
+            <table id="clientesTable" style="display: none;">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Nombre</th>
+                        <th>Dirección</th>
+                        <th>Teléfono</th>
+                    </tr>
+                </thead>
+                <tbody id="clientesTableBody"></tbody>
+            </table>
+
+            <div id="no-clientes" style="display: none; text-align: center; padding: 40px;">
+                <h3>👥 No hay clientes registrados</h3>
+                <p>Usa el botón INSERTAR para agregar clientes</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let selectedClienteId = null;
+        let isUpdating = false;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            refreshTable();
+            document.getElementById('direccion').value = 'Chillogallo';
+        });
+
+        // FUNCIÓN REFRESCAR
+        async function refreshTable() {
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('clientesTable').style.display = 'none';
+            document.getElementById('no-clientes').style.display = 'none';
+            clearSelection();
+
+            try {
+                const response = await fetch('/api/customers');
+                const data = await response.json();
+                const clientes = data.success ? data.data : data; // Manejar ambos formatos
+                const tbody = document.getElementById('clientesTableBody');
+                tbody.innerHTML = '';
+
+                if (clientes.length === 0) {
+                    document.getElementById('no-clientes').style.display = 'block';
+                } else {
+                    clientes.forEach(cliente => {
+                        const row = document.createElement('tr');
+                        row.onclick = () => selectRow(cliente.id_cliente || cliente.ID_CLIENTE, row);
+                        row.innerHTML = `
+                            <td>${cliente.id_cliente || cliente.ID_CLIENTE}</td>
+                            <td>${cliente.nombre || cliente.NOMBRE}</td>
+                            <td>${cliente.direccion || cliente.DIRECCION}</td>
+                            <td>${cliente.telefono || cliente.TELEFONO || 'N/A'}</td>
+                        `;
+                        tbody.appendChild(row);
+                    });
+                    document.getElementById('clientesTable').style.display = 'table';
+                }
+                document.getElementById('total-count').textContent = clientes.length;
+                showAlert('Tabla actualizada correctamente', 'success');
+            } catch (error) {
+                console.error('Error al cargar clientes:', error);
+                showAlert('Error al cargar clientes', 'error');
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+            }
+        }
+
+        // FUNCIÓN INSERTAR
+        function showInsertForm() {
+            isUpdating = false;
+            document.getElementById('formTitle').textContent = 'Insertar Nuevo Cliente';
+            document.getElementById('clienteForm').reset();
+            document.getElementById('clienteId').value = '';
+            document.getElementById('direccion').value = 'Chillogallo';
+            document.getElementById('formContainer').style.display = 'block';
+        }
+
+        // FUNCIÓN ACTUALIZAR
+        async function showUpdateForm() {
+            if (!selectedClienteId) {
+                showAlert('Selecciona un cliente para actualizar', 'error');
+                return;
+            }
+
+            isUpdating = true;
+            try {
+                const response = await fetch(`/api/customers/${selectedClienteId}`);
+                const cliente = await response.json();
+
+                if (response.ok) {
+                    document.getElementById('formTitle').textContent = 'Actualizar Cliente';
+                    document.getElementById('clienteId').value = cliente.id_cliente;
+                    document.getElementById('nombre').value = cliente.nombre;
+                    document.getElementById('direccion').value = cliente.direccion;
+                    document.getElementById('telefono').value = cliente.telefono || '';
+                    document.getElementById('formContainer').style.display = 'block';
+                } else {
+                    showAlert('Error al cargar cliente', 'error');
+                }
+            } catch (error) {
+                showAlert('Error de conexión', 'error');
+            }
+        }
+
+        // FUNCIÓN BORRAR
+        async function deleteSelected() {
+            if (!selectedClienteId) {
+                showAlert('Selecciona un cliente para eliminar', 'error');
+                return;
+            }
+
+            if (!confirm('¿Estás seguro de que deseas eliminar este cliente?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/customers/${selectedClienteId}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    showAlert('Cliente eliminado correctamente', 'success');
+                    refreshTable();
+                } else {
+                    const error = await response.json();
+                    showAlert(error.error || 'Error al eliminar cliente', 'error');
+                }
+            } catch (error) {
+                showAlert('Error de conexión', 'error');
+            }
+        }
+
+        // MANEJAR ENVÍO DEL FORMULARIO
+        document.getElementById('clienteForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const clienteData = {
+                nombre: document.getElementById('nombre').value,
+                direccion: document.getElementById('direccion').value,
+                telefono: document.getElementById('telefono').value
+            };
+
+            try {
+                let response;
+                if (isUpdating) {
+                    response = await fetch(`/api/customers/${selectedClienteId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(clienteData)
+                    });
+                } else {
+                    response = await fetch('/api/customers', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(clienteData)
+                    });
+                }
+
+                if (response.ok) {
+                    const message = isUpdating ? 'Cliente actualizado correctamente' : 'Cliente insertado correctamente';
+                    showAlert(message, 'success');
+                    hideForm();
+                    refreshTable();
+                } else {
+                    const error = await response.json();
+                    showAlert(error.error || 'Error al guardar cliente', 'error');
+                }
+            } catch (error) {
+                showAlert('Error de conexión', 'error');
+            }
+        });
+
+        // FUNCIONES AUXILIARES
+        function selectRow(id, row) {
+            document.querySelectorAll('tr').forEach(r => r.classList.remove('selected'));
+            row.classList.add('selected');
+            selectedClienteId = id;
+            document.getElementById('updateBtn').disabled = false;
+            document.getElementById('deleteBtn').disabled = false;
+        }
+
+        function clearSelection() {
+            selectedClienteId = null;
+            document.getElementById('updateBtn').disabled = true;
+            document.getElementById('deleteBtn').disabled = true;
+            document.querySelectorAll('tr').forEach(r => r.classList.remove('selected'));
+        }
+
+        function hideForm() {
+            document.getElementById('formContainer').style.display = 'none';
+            clearSelection();
+        }
+
+        function showAlert(message, type) {
+            const alertsContainer = document.getElementById('alerts');
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type}`;
+            alert.textContent = message;
+            alertsContainer.appendChild(alert);
+            setTimeout(() => alert.remove(), 5000);
+        }
+    </script>
+</body>
+</html>
+<body>
+    <div class="container">
+        <h1>👥 Gestión de Clientes</h1>
+        
+        <a href="/" style="text-decoration: none;">
+            <button class="back-btn">← Volver al Dashboard</button>
+        </a>
+
+        <div id="alerts"></div>
+
+        <!-- Formulario -->
+        <div class="form-container">
+            <h3 id="form-title">➕ Agregar Nuevo Cliente</h3>
+            <form id="clienteForm">
+                <input type="hidden" id="clienteId">
+                <div class="form-group">
+                    <label for="nombre">Nombre Completo *</label>
+                    <input type="text" id="nombre" required placeholder="Ej: Juan Carlos Pérez">
+                </div>
+                <div class="form-group">
+                    <label for="direccion">Dirección</label>
+                    <input type="text" id="direccion" value="Chillogallo" readonly>
+                    <small>La dirección está fija para esta ubicación</small>
+                </div>
+                <div class="form-group">
+                    <label for="telefono">Teléfono</label>
+                    <input type="tel" id="telefono" placeholder="Ej: 0998765432">
+                </div>
+                <div class="form-group">
+                    <button type="submit" id="submitBtn">💾 Guardar Cliente</button>
+                    <button type="button" id="cancelBtn" class="btn-secondary" style="display: none;">❌ Cancelar</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Lista de clientes -->
+        <div style="background: white; padding: 20px; border-radius: 8px;">
+            <h3>📋 Lista de Clientes (Total: <span id="total-count">0</span>)</h3>
+            
+            <div id="loading" style="text-align: center; padding: 20px;">
+                Cargando clientes...
+            </div>
+
+            <table id="clientesTable" style="display: none;">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Nombre</th>
+                        <th>Dirección</th>
+                        <th>Teléfono</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="clientesTableBody"></tbody>
+            </table>
+
+            <div id="no-clientes" style="display: none; text-align: center; padding: 40px;">
+                <h3>👥 No hay clientes registrados</h3>
+                <p>Agrega tu primer cliente usando el formulario de arriba</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de confirmación -->
+    <div id="deleteModal" class="modal">
+        <div class="modal-content">
+            <h3>⚠️ Confirmar Eliminación</h3>
+            <p>¿Estás seguro de que deseas eliminar este cliente?</p>
+            <p><strong id="delete-cliente-name"></strong></p>
+            <div style="text-align: right; margin-top: 20px;">
+                <button onclick="closeDeleteModal()" class="btn-secondary">Cancelar</button>
+                <button onclick="confirmDelete()" class="btn-danger">🗑️ Eliminar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentClienteId = null;
+        let deleteClienteId = null;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            loadClientes();
+            document.getElementById('direccion').value = 'Chillogallo';
+        });
+
+        async function loadClientes() {
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('clientesTable').style.display = 'none';
+            document.getElementById('no-clientes').style.display = 'none';
+
+            try {
+                const response = await fetch('/api/customers');
+                const clientes = await response.json();
+                const tbody = document.getElementById('clientesTableBody');
+                tbody.innerHTML = '';
+
+                if (clientes.length === 0) {
+                    document.getElementById('no-clientes').style.display = 'block';
+                } else {
+                    clientes.forEach(cliente => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${cliente.id_cliente}</td>
+                            <td>${cliente.nombre}</td>
+                            <td>${cliente.direccion}</td>
+                            <td>${cliente.telefono || 'N/A'}</td>
+                            <td>
+                                <button class="btn-warning" onclick="editCliente(${cliente.id_cliente})">✏️ Editar</button>
+                                <button class="btn-danger" onclick="showDeleteModal(${cliente.id_cliente}, '${cliente.nombre}')">🗑️ Eliminar</button>
+                            </td>
+                        `;
+                        tbody.appendChild(row);
+                    });
+                    document.getElementById('clientesTable').style.display = 'table';
+                }
+                document.getElementById('total-count').textContent = clientes.length;
+            } catch (error) {
+                showAlert('Error al cargar clientes', 'error');
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+            }
+        }
+
+        document.getElementById('clienteForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const clienteData = {
+                nombre: document.getElementById('nombre').value,
+                direccion: document.getElementById('direccion').value,
+                telefono: document.getElementById('telefono').value
+            };
+
+            try {
+                let response;
+                if (currentClienteId) {
+                    response = await fetch(`/api/customers/${currentClienteId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(clienteData)
+                    });
+                } else {
+                    response = await fetch('/api/customers', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(clienteData)
+                    });
+                }
+
+                if (response.ok) {
+                    const message = currentClienteId ? 'Cliente actualizado correctamente' : 'Cliente creado correctamente';
+                    showAlert(message, 'success');
+                    resetForm();
+                    loadClientes();
+                } else {
+                    const error = await response.json();
+                    showAlert(error.error || 'Error al guardar cliente', 'error');
+                }
+            } catch (error) {
+                showAlert('Error de conexión', 'error');
+            }
+        });
+
+        async function editCliente(id) {
+            try {
+                const response = await fetch(`/api/customers/${id}`);
+                const cliente = await response.json();
+
+                if (response.ok) {
+                    currentClienteId = id;
+                    document.getElementById('clienteId').value = id;
+                    document.getElementById('nombre').value = cliente.nombre;
+                    document.getElementById('direccion').value = cliente.direccion;
+                    document.getElementById('telefono').value = cliente.telefono || '';
+                    document.getElementById('form-title').textContent = '✏️ Editar Cliente';
+                    document.getElementById('submitBtn').textContent = '💾 Actualizar Cliente';
+                    document.getElementById('cancelBtn').style.display = 'inline-block';
+                } else {
+                    showAlert('Error al cargar cliente', 'error');
+                }
+            } catch (error) {
+                showAlert('Error de conexión', 'error');
+            }
+        }
+
+        function showDeleteModal(id, name) {
+            deleteClienteId = id;
+            document.getElementById('delete-cliente-name').textContent = name;
+            document.getElementById('deleteModal').style.display = 'block';
+        }
+
+        function closeDeleteModal() {
+            document.getElementById('deleteModal').style.display = 'none';
+            deleteClienteId = null;
+        }
+
+        async function confirmDelete() {
+            if (!deleteClienteId) return;
+            try {
+                const response = await fetch(`/api/customers/${deleteClienteId}`, { method: 'DELETE' });
+                if (response.ok) {
+                    showAlert('Cliente eliminado correctamente', 'success');
+                    loadClientes();
+                } else {
+                    const error = await response.json();
+                    showAlert(error.error || 'Error al eliminar cliente', 'error');
+                }
+            } catch (error) {
+                showAlert('Error de conexión', 'error');
+            } finally {
+                closeDeleteModal();
+            }
+        }
+
+        document.getElementById('cancelBtn').addEventListener('click', resetForm);
+
+        function resetForm() {
+            currentClienteId = null;
+            document.getElementById('clienteForm').reset();
+            document.getElementById('direccion').value = 'Chillogallo';
+            document.getElementById('form-title').textContent = '➕ Agregar Nuevo Cliente';
+            document.getElementById('submitBtn').textContent = '💾 Guardar Cliente';
+            document.getElementById('cancelBtn').style.display = 'none';
+        }
+
+        function showAlert(message, type = 'info') {
+            const alertsContainer = document.getElementById('alerts');
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type}`;
+            alert.textContent = message;
+            alertsContainer.appendChild(alert);
+            setTimeout(() => alert.remove(), 5000);
+        }
+    </script>
+</body>
+</html>
