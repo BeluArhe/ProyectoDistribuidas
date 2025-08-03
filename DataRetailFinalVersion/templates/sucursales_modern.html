@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sucursales - DataRetail</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/modern.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <header class="header">
+        <h1><i class="fas fa-store"></i> Gestión de Sucursales</h1>
+        <p class="subtitle">Administra tus puntos de venta</p>
+    </header>
+
+    <div class="container">
+        <a href="/" class="btn btn-back"><i class="fas fa-arrow-left"></i> Volver al Dashboard</a>
+        <div id="alerts"></div>
+
+        <div class="form-container">
+            <h3><i class="fas fa-plus-circle"></i> <span id="form-title">Agregar Nueva Sucursal</span></h3>
+            <form id="sucursalForm">
+                <input type="hidden" id="sucursalId">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="nombre">Nombre de la Sucursal *</label>
+                        <input type="text" id="nombre" class="form-control" required placeholder="Ej: Sucursal Centro">
+                    </div>
+                    <div class="form-group">
+                        <label for="ciudad">Ciudad</label>
+                        <input type="text" id="ciudad" class="form-control" value="Quito-Sur" readonly>
+                        <small style="color: #666;">La ciudad está fija para esta ubicación</small>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="direccion">Dirección *</label>
+                    <input type="text" id="direccion" class="form-control" required placeholder="Ej: Av. Principal 123">
+                </div>
+                <div class="form-group">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> <span id="btn-text">Guardar Sucursal</span>
+                    </button>
+                    <button type="button" id="cancelBtn" class="btn btn-secondary" style="display: none; margin-left: 10px;">
+                        <i class="fas fa-times"></i> Cancelar
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <div class="table-container">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <h3><i class="fas fa-building"></i> Lista de Sucursales</h3>
+                <div class="stat-card" style="margin: 0; padding: 1rem;">
+                    <div class="stat-number" id="total-count">0</div>
+                    <div class="stat-label">Total Sucursales</div>
+                </div>
+            </div>
+
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>Cargando sucursales...</p>
+            </div>
+
+            <table class="table" id="sucursalesTable" style="display: none;">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Nombre</th>
+                        <th>Ciudad</th>
+                        <th>Dirección</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="sucursalesTableBody"></tbody>
+            </table>
+
+            <div id="no-sucursales" style="display: none; text-align: center; padding: 3rem;">
+                <i class="fas fa-store-slash" style="font-size: 4rem; color: #ccc; margin-bottom: 1rem;"></i>
+                <h3 style="color: #666;">No hay sucursales registradas</h3>
+                <p style="color: #999;">Agrega tu primera sucursal usando el formulario de arriba</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="deleteModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">
+                    <i class="fas fa-exclamation-triangle" style="color: #e74c3c;"></i>
+                    Confirmar Eliminación
+                </h3>
+                <button class="close" onclick="closeDeleteModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>¿Estás seguro de que deseas eliminar esta sucursal?</p>
+                <p><strong id="delete-sucursal-name"></strong></p>
+                <p style="color: #e74c3c; font-size: 0.9rem;">Esta acción no se puede deshacer.</p>
+            </div>
+            <div class="modal-footer" style="text-align: right; margin-top: 2rem;">
+                <button class="btn btn-secondary" onclick="closeDeleteModal()">Cancelar</button>
+                <button class="btn btn-danger" onclick="confirmDelete()" style="margin-left: 10px;">
+                    <i class="fas fa-trash"></i> Eliminar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentSucursalId = null;
+        let deleteSucursalId = null;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            loadSucursales();
+            document.getElementById('ciudad').value = 'Quito-Sur';
+        });
+
+        async function loadSucursales() {
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('sucursalesTable').style.display = 'none';
+            document.getElementById('no-sucursales').style.display = 'none';
+
+            try {
+                const response = await fetch('/api/sucursales');
+                const sucursales = await response.json();
+                const tbody = document.getElementById('sucursalesTableBody');
+                tbody.innerHTML = '';
+
+                if (sucursales.length === 0) {
+                    document.getElementById('no-sucursales').style.display = 'block';
+                } else {
+                    sucursales.forEach(sucursal => {
+                        const row = createSucursalRow(sucursal);
+                        tbody.appendChild(row);
+                    });
+                    document.getElementById('sucursalesTable').style.display = 'table';
+                }
+                document.getElementById('total-count').textContent = sucursales.length;
+            } catch (error) {
+                console.error('Error:', error);
+                showAlert('Error al cargar sucursales', 'error');
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+            }
+        }
+
+        function createSucursalRow(sucursal) {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${sucursal.id_sucursal}</td>
+                <td><i class="fas fa-store" style="color: #2ecc71; margin-right: 8px;"></i>${sucursal.nombre}</td>
+                <td><i class="fas fa-city" style="color: #3498db; margin-right: 8px;"></i>${sucursal.ciudad}</td>
+                <td><i class="fas fa-map-marker-alt" style="color: #e74c3c; margin-right: 8px;"></i>${sucursal.direccion}</td>
+                <td class="actions">
+                    <button class="btn btn-warning btn-sm" onclick="editSucursal(${sucursal.id_sucursal})">
+                        <i class="fas fa-edit"></i> Editar
+                    </button>
+                    <button class="btn btn-danger btn-sm" onclick="showDeleteModal(${sucursal.id_sucursal}, '${sucursal.nombre}')">
+                        <i class="fas fa-trash"></i> Eliminar
+                    </button>
+                </td>
+            `;
+            return row;
+        }
+
+        document.getElementById('sucursalForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const sucursalData = {
+                nombre: document.getElementById('nombre').value,
+                ciudad: document.getElementById('ciudad').value,
+                direccion: document.getElementById('direccion').value
+            };
+
+            try {
+                let response;
+                if (currentSucursalId) {
+                    response = await fetch(`/api/sucursales/${currentSucursalId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(sucursalData)
+                    });
+                } else {
+                    response = await fetch('/api/sucursales', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(sucursalData)
+                    });
+                }
+
+                if (response.ok) {
+                    const message = currentSucursalId ? 'Sucursal actualizada correctamente' : 'Sucursal creada correctamente';
+                    showAlert(message, 'success');
+                    resetForm();
+                    loadSucursales();
+                } else {
+                    const error = await response.json();
+                    showAlert(error.error || 'Error al guardar sucursal', 'error');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showAlert('Error de conexión', 'error');
+            }
+        });
+
+        async function editSucursal(id) {
+            try {
+                const response = await fetch(`/api/sucursales/${id}`);
+                const sucursal = await response.json();
+
+                if (response.ok) {
+                    currentSucursalId = id;
+                    document.getElementById('sucursalId').value = id;
+                    document.getElementById('nombre').value = sucursal.nombre;
+                    document.getElementById('ciudad').value = sucursal.ciudad;
+                    document.getElementById('direccion').value = sucursal.direccion;
+                    
+                    document.getElementById('form-title').textContent = 'Editar Sucursal';
+                    document.getElementById('btn-text').textContent = 'Actualizar Sucursal';
+                    document.getElementById('cancelBtn').style.display = 'inline-block';
+                    document.querySelector('.form-container').scrollIntoView({ behavior: 'smooth' });
+                } else {
+                    showAlert('Error al cargar sucursal', 'error');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showAlert('Error de conexión', 'error');
+            }
+        }
+
+        function showDeleteModal(id, name) {
+            deleteSucursalId = id;
+            document.getElementById('delete-sucursal-name').textContent = name;
+            document.getElementById('deleteModal').style.display = 'block';
+        }
+
+        function closeDeleteModal() {
+            document.getElementById('deleteModal').style.display = 'none';
+            deleteSucursalId = null;
+        }
+
+        async function confirmDelete() {
+            if (!deleteSucursalId) return;
+            try {
+                const response = await fetch(`/api/sucursales/${deleteSucursalId}`, { method: 'DELETE' });
+                if (response.ok) {
+                    showAlert('Sucursal eliminada correctamente', 'success');
+                    loadSucursales();
+                } else {
+                    const error = await response.json();
+                    showAlert(error.error || 'Error al eliminar sucursal', 'error');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showAlert('Error de conexión', 'error');
+            } finally {
+                closeDeleteModal();
+            }
+        }
+
+        document.getElementById('cancelBtn').addEventListener('click', resetForm);
+
+        function resetForm() {
+            currentSucursalId = null;
+            document.getElementById('sucursalForm').reset();
+            document.getElementById('sucursalId').value = '';
+            document.getElementById('ciudad').value = 'Quito-Sur';
+            document.getElementById('form-title').textContent = 'Agregar Nueva Sucursal';
+            document.getElementById('btn-text').textContent = 'Guardar Sucursal';
+            document.getElementById('cancelBtn').style.display = 'none';
+        }
+
+        function showAlert(message, type = 'info') {
+            const alertsContainer = document.getElementById('alerts');
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type}`;
+            alert.innerHTML = `
+                <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i>
+                ${message}
+            `;
+            alertsContainer.appendChild(alert);
+            setTimeout(() => {
+                alert.style.animation = 'slideInAlert 0.5s ease reverse';
+                setTimeout(() => alert.remove(), 500);
+            }, 5000);
+        }
+
+        window.onclick = function(event) {
+            const modal = document.getElementById('deleteModal');
+            if (event.target === modal) closeDeleteModal();
+        }
+    </script>
+</body>
+</html>

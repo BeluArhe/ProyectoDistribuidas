@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fábricas - DataRetail</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background-color: #f5f5f5; }
+        .container { max-width: 1000px; margin: 0 auto; }
+        h1 { color: #333; text-align: center; }
+        .buttons-container { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; text-align: center; }
+        .btn { padding: 12px 24px; margin: 5px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; }
+        .btn-insert { background: #28a745; color: white; }
+        .btn-update { background: #ffc107; color: black; }
+        .btn-delete { background: #dc3545; color: white; }
+        .btn-refresh { background: #007bff; color: white; }
+        .btn:hover { opacity: 0.8; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .form-container { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; display: none; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
+        textarea { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; min-height: 80px; }
+        table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
+        th { background: #007bff; color: white; }
+        tr:hover { background: #f8f9fa; }
+        tr.selected { background: #e3f2fd; }
+        .alert { padding: 15px; margin-bottom: 20px; border-radius: 4px; }
+        .alert-success { background: #d4edda; color: #155724; }
+        .alert-error { background: #f8d7da; color: #721c24; }
+        .back-btn { background: #6c757d; color: white; padding: 10px 20px; border: none; border-radius: 4px; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏭 Gestión de Fábricas</h1>
+        
+        <a href="/" style="text-decoration: none;">
+            <button class="back-btn">← Volver al Dashboard</button>
+        </a>
+
+        <div id="alerts"></div>
+
+        <!-- 4 BOTONES PRINCIPALES -->
+        <div class="buttons-container">
+            <h3>Operaciones CRUD</h3>
+            <button class="btn btn-insert" onclick="showInsertForm()">➕ INSERTAR</button>
+            <button class="btn btn-update" onclick="showUpdateForm()" id="updateBtn" disabled>✏️ ACTUALIZAR</button>
+            <button class="btn btn-delete" onclick="deleteSelected()" id="deleteBtn" disabled>🗑️ BORRAR</button>
+            <button class="btn btn-refresh" onclick="refreshTable()">🔄 REFRESCAR</button>
+        </div>
+
+        <!-- FORMULARIO INSERTAR/ACTUALIZAR -->
+        <div class="form-container" id="formContainer">
+            <h3 id="formTitle">Insertar Fábrica</h3>
+            <form id="fabricaForm">
+                <input type="hidden" id="fabricaId">
+                <div class="form-group">
+                    <label for="nombre">Nombre de la Fábrica *</label>
+                    <input type="text" id="nombre" required placeholder="Textiles Andinos S.A.">
+                </div>
+                <div class="form-group">
+                    <label for="pais">País *</label>
+                    <input type="text" id="pais" required placeholder="Ecuador">
+                </div>
+                <div class="form-group">
+                    <button type="submit" class="btn btn-insert">💾 Guardar</button>
+                    <button type="button" class="btn" onclick="hideForm()" style="background: #6c757d; color: white;">❌ Cancelar</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- TABLA DE DATOS -->
+        <div style="background: white; padding: 20px; border-radius: 8px;">
+            <h3>📋 Lista de Fábricas (Total: <span id="total-count">0</span>)</h3>
+            <p style="color: #666; margin-bottom: 15px;">Haz clic en una fila para seleccionarla</p>
+            
+            <div id="loading" style="text-align: center; padding: 20px;">
+                Cargando fábricas...
+            </div>
+
+            <table id="fabricasTable" style="display: none;">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Nombre</th>
+                        <th>País</th>
+                    </tr>
+                </thead>
+                <tbody id="fabricasTableBody"></tbody>
+            </table>
+
+            <div id="no-fabricas" style="display: none; text-align: center; padding: 40px;">
+                <h3>🏭 No hay fábricas registradas</h3>
+                <p>Usa el botón INSERTAR para agregar fábricas</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let selectedFabricaId = null;
+        let isUpdating = false;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            refreshTable();
+        });
+
+        async function refreshTable() {
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('fabricasTable').style.display = 'none';
+            document.getElementById('no-fabricas').style.display = 'none';
+            clearSelection();
+
+            try {
+                const response = await fetch('/api/fabricas');
+                const result = await response.json();
+                
+                // Manejar diferentes formatos de respuesta
+                let fabricas;
+                if (result.success && result.data) {
+                    fabricas = result.data;
+                } else if (Array.isArray(result)) {
+                    fabricas = result;
+                } else {
+                    console.error('Formato de respuesta inesperado:', result);
+                    fabricas = [];
+                }
+                
+                const tbody = document.getElementById('fabricasTableBody');
+                tbody.innerHTML = '';
+
+                if (fabricas.length === 0) {
+                    document.getElementById('no-fabricas').style.display = 'block';
+                } else {
+                    fabricas.forEach(fabrica => {
+                        const row = document.createElement('tr');
+                        
+                        // Manejar campos en minúsculas y mayúsculas
+                        const id = fabrica.id_fabrica || fabrica.ID_FABRICA;
+                        const nombre = fabrica.nombre || fabrica.NOMBRE;
+                        const pais = fabrica.pais || fabrica.PAIS;
+                        
+                        row.onclick = () => selectRow(id, row);
+                        row.innerHTML = `
+                            <td>${id}</td>
+                            <td>${nombre || 'N/A'}</td>
+                            <td>${pais || 'N/A'}</td>
+                        `;
+                        tbody.appendChild(row);
+                    });
+                    document.getElementById('fabricasTable').style.display = 'table';
+                }
+                document.getElementById('total-count').textContent = fabricas.length;
+                showAlert('Tabla actualizada correctamente', 'success');
+            } catch (error) {
+                console.error('Error al cargar fábricas:', error);
+                showAlert('Error al cargar fábricas', 'error');
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+            }
+        }
+
+        function showInsertForm() {
+            isUpdating = false;
+            document.getElementById('formTitle').textContent = 'Insertar Nueva Fábrica';
+            document.getElementById('fabricaForm').reset();
+            document.getElementById('fabricaId').value = '';
+            document.getElementById('formContainer').style.display = 'block';
+        }
+
+        async function showUpdateForm() {
+            if (!selectedFabricaId) {
+                showAlert('Selecciona una fábrica para actualizar', 'error');
+                return;
+            }
+
+            isUpdating = true;
+            try {
+                const response = await fetch(`/api/fabricas/${selectedFabricaId}`);
+                const fabrica = await response.json();
+
+                if (response.ok) {
+                    document.getElementById('formTitle').textContent = 'Actualizar Fábrica';
+                    document.getElementById('fabricaId').value = fabrica.id_fabrica || fabrica.ID_FABRICA;
+                    document.getElementById('nombre').value = fabrica.nombre || fabrica.NOMBRE || '';
+                    document.getElementById('pais').value = fabrica.pais || fabrica.PAIS || '';
+                    document.getElementById('formContainer').style.display = 'block';
+                } else {
+                    showAlert('Error al cargar fábrica', 'error');
+                }
+            } catch (error) {
+                console.error('Error al cargar fábrica:', error);
+                showAlert('Error de conexión', 'error');
+            }
+        }
+
+        async function deleteSelected() {
+            if (!selectedFabricaId) {
+                showAlert('Selecciona una fábrica para eliminar', 'error');
+                return;
+            }
+
+            if (!confirm('¿Estás seguro de que deseas eliminar esta fábrica?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/fabricas/${selectedFabricaId}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    showAlert('Fábrica eliminada correctamente', 'success');
+                    refreshTable();
+                } else {
+                    const error = await response.json();
+                    showAlert(error.error || 'Error al eliminar fábrica', 'error');
+                }
+            } catch (error) {
+                showAlert('Error de conexión', 'error');
+            }
+        }
+
+        document.getElementById('fabricaForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const fabricaData = {
+                nombre: document.getElementById('nombre').value,
+                pais: document.getElementById('pais').value
+            };
+
+            try {
+                let response;
+                if (isUpdating) {
+                    response = await fetch(`/api/fabricas/${selectedFabricaId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(fabricaData)
+                    });
+                } else {
+                    response = await fetch('/api/fabricas', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(fabricaData)
+                    });
+                }
+
+                if (response.ok) {
+                    const message = isUpdating ? 'Fábrica actualizada correctamente' : 'Fábrica insertada correctamente';
+                    showAlert(message, 'success');
+                    hideForm();
+                    refreshTable();
+                } else {
+                    const error = await response.json();
+                    showAlert(error.error || 'Error al guardar fábrica', 'error');
+                }
+            } catch (error) {
+                showAlert('Error de conexión', 'error');
+            }
+        });
+
+        function selectRow(id, row) {
+            document.querySelectorAll('tr').forEach(r => r.classList.remove('selected'));
+            row.classList.add('selected');
+            selectedFabricaId = id;
+            document.getElementById('updateBtn').disabled = false;
+            document.getElementById('deleteBtn').disabled = false;
+        }
+
+        function clearSelection() {
+            selectedFabricaId = null;
+            document.getElementById('updateBtn').disabled = true;
+            document.getElementById('deleteBtn').disabled = true;
+            document.querySelectorAll('tr').forEach(r => r.classList.remove('selected'));
+        }
+
+        function hideForm() {
+            document.getElementById('formContainer').style.display = 'none';
+            clearSelection();
+        }
+
+        function showAlert(message, type) {
+            const alertsContainer = document.getElementById('alerts');
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type}`;
+            alert.textContent = message;
+            alertsContainer.appendChild(alert);
+            setTimeout(() => alert.remove(), 5000);
+        }
+    </script>
+</body>
+</html>

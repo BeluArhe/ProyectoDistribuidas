@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auditoría del Sistema - DataRetail</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>Auditoría del Sistema</h1>
+        </div>
+    </header>
+    
+    <div class="container">
+        <nav>
+            <ul>
+                <li><a href="/">Inicio</a></li>
+                <li><a href="/products">Productos</a></li>
+                <li><a href="/customers">Clientes</a></li>
+                <li><a href="/sucursales">Sucursales</a></li>
+                <li><a href="/empleados">Empleados</a></li>
+                <li><a href="/tarjetas">Tarjetas</a></li>
+                <li><a href="/fabricas">Fábricas</a></li>
+                <li><a href="/auditoria">Auditoría</a></li>
+            </ul>
+        </nav>
+        
+        <!-- Filtros de auditoría -->
+        <div class="form-container">
+            <h3>Filtros de Auditoría</h3>
+            <form id="filter-form">
+                <div class="form-group">
+                    <label for="table-filter">Filtrar por Tabla:</label>
+                    <select id="table-filter" name="table">
+                        <option value="">Todas las tablas</option>
+                        <option value="sucursal_qs">Sucursales</option>
+                        <option value="cliente_chillogallo">Clientes</option>
+                        <option value="empleado_sur">Empleados</option>
+                        <option value="producto">Productos</option>
+                        <option value="tarjeta">Tarjetas</option>
+                        <option value="fabrica">Fábricas</option>
+                    </select>
+                </div>
+                
+                <button type="submit" class="btn btn-primary">Filtrar</button>
+                <button type="button" class="btn btn-success" onclick="loadAuditoria()">Recargar</button>
+            </form>
+        </div>
+        
+        <!-- Tabla de auditoría -->
+        <div class="table-container">
+            <h3>Registro de Auditoría</h3>
+            <div id="alert-container"></div>
+            <table id="auditoria-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Usuario</th>
+                        <th>Fecha</th>
+                        <th>Operación</th>
+                        <th>Tabla</th>
+                        <th>Datos Anteriores</th>
+                        <th>Datos Nuevos</th>
+                    </tr>
+                </thead>
+                <tbody id="auditoria-tbody">
+                    <!-- Los registros de auditoría se cargarán aquí -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // Elementos del DOM
+        const filterForm = document.getElementById('filter-form');
+        const tableFilter = document.getElementById('table-filter');
+        const alertContainer = document.getElementById('alert-container');
+        const auditoriaTableBody = document.getElementById('auditoria-tbody');
+        
+        // Inicializar cuando la página carga
+        document.addEventListener('DOMContentLoaded', function() {
+            loadAuditoria();
+            
+            // Event listener para el formulario de filtros
+            filterForm.addEventListener('submit', handleFilterSubmit);
+        });
+        
+        // Cargar registros de auditoría
+        async function loadAuditoria(tableFilter = '') {
+            try {
+                let url = '/api/auditoria';
+                if (tableFilter) {
+                    url += `?table=${tableFilter}`;
+                }
+                
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (data.success) {
+                    displayAuditoria(data.data);
+                } else {
+                    showAlert('Error al cargar auditoría: ' + data.error, 'error');
+                }
+            } catch (error) {
+                showAlert('Error de conexión: ' + error.message, 'error');
+            }
+        }
+        
+        // Mostrar registros de auditoría en la tabla
+        function displayAuditoria(registros) {
+            auditoriaTableBody.innerHTML = '';
+            
+            if (registros.length === 0) {
+                auditoriaTableBody.innerHTML = '<tr><td colspan="7" style="text-align: center;">No hay registros de auditoría</td></tr>';
+                return;
+            }
+            
+            registros.forEach(registro => {
+                const row = document.createElement('tr');
+                
+                // Determinar el tipo de operación
+                let operacionTexto = '';
+                let operacionColor = '';
+                switch(registro.TIPO_OPERACION) {
+                    case 'I':
+                        operacionTexto = 'INSERT';
+                        operacionColor = 'color: green;';
+                        break;
+                    case 'U':
+                        operacionTexto = 'UPDATE';
+                        operacionColor = 'color: orange;';
+                        break;
+                    case 'D':
+                        operacionTexto = 'DELETE';
+                        operacionColor = 'color: red;';
+                        break;
+                }
+                
+                // Formatear fecha
+                const fecha = new Date(registro.FECHA).toLocaleString('es-ES');
+                
+                // Limitar longitud de datos para mejor visualización
+                const anterior = registro.ANTERIOR ? (registro.ANTERIOR.length > 50 ? registro.ANTERIOR.substring(0, 50) + '...' : registro.ANTERIOR) : '-';
+                const nuevo = registro.NUEVO ? (registro.NUEVO.length > 50 ? registro.NUEVO.substring(0, 50) + '...' : registro.NUEVO) : '-';
+                
+                row.innerHTML = `
+                    <td>${registro.ID_AUDITORIA}</td>
+                    <td>${registro.USER_NAME}</td>
+                    <td>${fecha}</td>
+                    <td style="${operacionColor}"><strong>${operacionTexto}</strong></td>
+                    <td>${registro.NOMBRE_TABLE}</td>
+                    <td title="${registro.ANTERIOR || ''}">${anterior}</td>
+                    <td title="${registro.NUEVO || ''}">${nuevo}</td>
+                `;
+                auditoriaTableBody.appendChild(row);
+            });
+        }
+        
+        // Manejar envío del formulario de filtros
+        function handleFilterSubmit(event) {
+            event.preventDefault();
+            const selectedTable = tableFilter.value;
+            loadAuditoria(selectedTable);
+        }
+        
+        // Mostrar alerta
+        function showAlert(message, type) {
+            const alertClass = type === 'success' ? 'alert-success' : 'alert-error';
+            const alertHTML = `
+                <div class="alert ${alertClass}">
+                    ${message}
+                </div>
+            `;
+            
+            alertContainer.innerHTML = alertHTML;
+            
+            // Auto-hide alert after 5 seconds
+            setTimeout(() => {
+                alertContainer.innerHTML = '';
+            }, 5000);
+        }
+    </script>
+    
+    <style>
+        /* Estilos específicos para la tabla de auditoría */
+        #auditoria-table {
+            font-size: 12px;
+        }
+        
+        #auditoria-table td {
+            max-width: 150px;
+            word-wrap: break-word;
+            vertical-align: top;
+        }
+        
+        #auditoria-table td:nth-child(6),
+        #auditoria-table td:nth-child(7) {
+            font-family: monospace;
+            font-size: 11px;
+            background-color: #f8f9fa;
+        }
+        
+        @media (max-width: 768px) {
+            #auditoria-table {
+                font-size: 10px;
+            }
+            
+            #auditoria-table td {
+                padding: 8px 4px;
+            }
+        }
+    </style>
+</body>
+</html>
