@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Empleados Norte - DataRetail</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container { max-width: 1200px; margin: 0 auto; }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: white;
+        }
+        
+        .header h1 {
+            font-size: 2.2rem;
+            margin-bottom: 8px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .header .subtitle {
+            font-size: 1rem;
+            opacity: 0.9;
+            background: rgba(46, 204, 113, 0.2);
+            padding: 8px 16px;
+            border-radius: 20px;
+            display: inline-block;
+        }
+        
+        .controls {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 25px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .top-row {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+        
+        .back-btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .back-btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
+        
+        .crud-notice {
+            background: rgba(46, 204, 113, 0.1);
+            border: 1px solid rgba(46, 204, 113, 0.3);
+            color: #155724;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            flex: 1;
+        }
+        
+        .operations {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        
+        .btn-create { background: linear-gradient(135deg, #28a745, #20c997); color: white; }
+        .btn-refresh { background: linear-gradient(135deg, #17a2b8, #6f42c1); color: white; }
+        .btn-edit { background: linear-gradient(135deg, #ffc107, #fd7e14); color: white; font-size: 0.8rem; padding: 6px 12px; }
+        .btn-delete { background: linear-gradient(135deg, #dc3545, #e83e8c); color: white; font-size: 0.8rem; padding: 6px 12px; }
+        
+        .form-container {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 25px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            display: none;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #495057;
+        }
+        
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+        }
+        
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        .form-actions {
+            display: flex;
+            gap: 12px;
+        }
+        
+        .btn-save { background: linear-gradient(135deg, #28a745, #20c997); color: white; }
+        .btn-cancel { background: linear-gradient(135deg, #6c757d, #495057); color: white; }
+        
+        .data-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            overflow: hidden;
+        }
+        
+        table { width: 100%; border-collapse: collapse; }
+        th {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 15px 12px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        td { padding: 12px; border-bottom: 1px solid #e9ecef; transition: background-color 0.3s ease; }
+        tr:hover td { background-color: rgba(102, 126, 234, 0.05); }
+        
+        .actions-cell { display: flex; gap: 8px; }
+        
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+        .alert-success { background: rgba(40, 167, 69, 0.1); color: #155724; border: 1px solid rgba(40, 167, 69, 0.3); }
+        .alert-error { background: rgba(220, 53, 69, 0.1); color: #721c24; border: 1px solid rgba(220, 53, 69, 0.3); }
+        
+        .table-info {
+            padding: 20px;
+            text-align: center;
+            color: #6c757d;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>👥 Empleados Norte</h1>
+            <div class="subtitle">Gestión Completa CRUD - Base Local</div>
+        </div>
+        
+        <div class="controls">
+            <div class="top-row">
+                <a href="/" class="back-btn">
+                    ← Volver al Dashboard
+                </a>
+                <div class="crud-notice">
+                    ✅ Operaciones disponibles: Crear, Leer, Actualizar y Eliminar empleados
+                </div>
+            </div>
+            
+            <div class="operations">
+                <button class="btn btn-create" onclick="toggleForm()">
+                    ➕ Nuevo Empleado
+                </button>
+                <button class="btn btn-refresh" onclick="loadEmpleados()">
+                    🔄 Actualizar
+                </button>
+            </div>
+        </div>
+
+        <div id="formContainer" class="form-container">
+            <h3 id="formTitle">Nuevo Empleado</h3>
+            <form id="empleadoForm">
+                <input type="hidden" id="empleadoId">
+                <div class="form-group">
+                    <label for="nombre">Nombre:</label>
+                    <input type="text" id="nombre" required>
+                </div>
+                <div class="form-group">
+                    <label for="cargo">Cargo:</label>
+                    <input type="text" id="cargo" required>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-save">💾 Guardar</button>
+                    <button type="button" class="btn btn-cancel" onclick="toggleForm()">❌ Cancelar</button>
+                </div>
+            </form>
+        </div>
+
+        <div id="alerts"></div>
+
+        <div class="data-container">
+            <div class="table-info">
+                <h3>📋 Lista de Empleados</h3>
+                <p>Total: <span id="total-count">0</span> • Gestión local completa</p>
+            </div>
+            
+            <div id="loading" style="text-align: center; padding: 40px; color: #6c757d;">
+                <div>🔄 Cargando empleados...</div>
+            </div>
+
+            <table id="empleadosTable" style="display: none;">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Nombre</th>
+                        <th>Sucursal</th>
+                        <th>Cargo</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="empleadosTableBody"></tbody>
+            </table>
+
+            <div id="no-data" style="display: none; text-align: center; padding: 40px; color: #6c757d;">
+                <h3>👥 No hay empleados registrados</h3>
+                <p>Utiliza el botón "Nuevo Empleado" para comenzar</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let isEditing = false;
+        let editingId = null;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            loadEmpleados();
+            document.getElementById('empleadoForm').addEventListener('submit', saveEmpleado);
+        });
+
+        function toggleForm() {
+            const formContainer = document.getElementById('formContainer');
+            const formTitle = document.getElementById('formTitle');
+            
+            if (formContainer.style.display === 'none' || formContainer.style.display === '') {
+                formContainer.style.display = 'block';
+                if (!isEditing) {
+                    formTitle.textContent = 'Nuevo Empleado';
+                    document.getElementById('empleadoForm').reset();
+                    document.getElementById('empleadoId').value = '';
+                }
+            } else {
+                formContainer.style.display = 'none';
+                isEditing = false;
+                editingId = null;
+                document.getElementById('empleadoForm').reset();
+            }
+        }
+
+        async function loadEmpleados() {
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('empleadosTable').style.display = 'none';
+            document.getElementById('no-data').style.display = 'none';
+
+            try {
+                const response = await fetch('/api/empleados');
+                const result = await response.json();
+                
+                let empleados = [];
+                if (result.success && result.data) {
+                    empleados = result.data;
+                } else if (Array.isArray(result)) {
+                    empleados = result;
+                }
+                
+                const tbody = document.getElementById('empleadosTableBody');
+                tbody.innerHTML = '';
+
+                if (empleados.length === 0) {
+                    document.getElementById('no-data').style.display = 'block';
+                } else {
+                    empleados.forEach(empleado => {
+                        const row = document.createElement('tr');
+                        const id = empleado.id_empleado || empleado.ID_EMPLEADO;
+                        const nombre = empleado.nombre || empleado.NOMBRE;
+                        const sucursal = empleado.sucursal || empleado.SUCURSAL;
+                        const cargo = empleado.cargo || empleado.CARGO;
+                        
+                        row.innerHTML = `
+                            <td>${id}</td>
+                            <td>${nombre || 'N/A'}</td>
+                            <td>${sucursal || 'N/A'}</td>
+                            <td>${cargo || 'N/A'}</td>
+                            <td class="actions-cell">
+                                <button class="btn btn-edit" onclick="editEmpleado(${id})">✏️ Editar</button>
+                                <button class="btn btn-delete" onclick="deleteEmpleado(${id})">🗑️ Eliminar</button>
+                            </td>
+                        `;
+                        tbody.appendChild(row);
+                    });
+                    document.getElementById('empleadosTable').style.display = 'table';
+                }
+                document.getElementById('total-count').textContent = empleados.length;
+                showAlert('Datos cargados correctamente', 'success');
+            } catch (error) {
+                console.error('Error al cargar empleados:', error);
+                showAlert('Error al cargar empleados: ' + error.message, 'error');
+                document.getElementById('no-data').style.display = 'block';
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+            }
+        }
+
+        async function saveEmpleado(event) {
+            event.preventDefault();
+            
+            const formData = {
+                nombre: document.getElementById('nombre').value,
+                cargo: document.getElementById('cargo').value
+            };
+
+            try {
+                let response;
+                if (isEditing && editingId) {
+                    response = await fetch(`/api/empleados/${editingId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(formData)
+                    });
+                } else {
+                    response = await fetch('/api/empleados', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(formData)
+                    });
+                }
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    showAlert(isEditing ? 'Empleado actualizado correctamente' : 'Empleado creado correctamente', 'success');
+                    toggleForm();
+                    loadEmpleados();
+                } else {
+                    showAlert('Error: ' + (result.message || 'Operación fallida'), 'error');
+                }
+            } catch (error) {
+                console.error('Error al guardar empleado:', error);
+                showAlert('Error al guardar empleado: ' + error.message, 'error');
+            }
+        }
+
+        async function editEmpleado(id) {
+            try {
+                const response = await fetch(`/api/empleados/${id}`);
+                const result = await response.json();
+                
+                let empleado = null;
+                if (result.success && result.data) {
+                    empleado = result.data;
+                } else if (result.id_empleado || result.ID_EMPLEADO) {
+                    empleado = result;
+                }
+
+                if (empleado) {
+                    isEditing = true;
+                    editingId = id;
+                    
+                    document.getElementById('empleadoId').value = id;
+                    document.getElementById('nombre').value = empleado.nombre || empleado.NOMBRE || '';
+                    document.getElementById('cargo').value = empleado.cargo || empleado.CARGO || '';
+                    
+                    document.getElementById('formTitle').textContent = 'Editar Empleado';
+                    document.getElementById('formContainer').style.display = 'block';
+                } else {
+                    showAlert('Error al cargar datos del empleado', 'error');
+                }
+            } catch (error) {
+                console.error('Error al cargar empleado:', error);
+                showAlert('Error al cargar empleado: ' + error.message, 'error');
+            }
+        }
+
+        async function deleteEmpleado(id) {
+            if (confirm('¿Estás seguro de que deseas eliminar este empleado?')) {
+                try {
+                    const response = await fetch(`/api/empleados/${id}`, { method: 'DELETE' });
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        showAlert('Empleado eliminado correctamente', 'success');
+                        loadEmpleados();
+                    } else {
+                        showAlert('Error al eliminar empleado: ' + (result.message || 'Operación fallida'), 'error');
+                    }
+                } catch (error) {
+                    console.error('Error al eliminar empleado:', error);
+                    showAlert('Error al eliminar empleado: ' + error.message, 'error');
+                }
+            }
+        }
+
+        function showAlert(message, type) {
+            const alertsContainer = document.getElementById('alerts');
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type}`;
+            alert.textContent = message;
+            alertsContainer.appendChild(alert);
+            setTimeout(() => alert.remove(), 5000);
+        }
+    </script>
+</body>
+</html>

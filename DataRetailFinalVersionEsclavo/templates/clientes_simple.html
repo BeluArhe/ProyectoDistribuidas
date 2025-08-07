@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clientes - DataRetail</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container { max-width: 1200px; margin: 0 auto; }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: white;
+        }
+        
+        .header h1 {
+            font-size: 2.2rem;
+            margin-bottom: 8px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .header .subtitle {
+            font-size: 1rem;
+            opacity: 0.9;
+            background: rgba(40, 167, 69, 0.2);
+            padding: 8px 16px;
+            border-radius: 20px;
+            display: inline-block;
+        }
+        
+        .controls {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 25px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .top-row {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+        
+        .back-btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .back-btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
+        
+        .crud-notice {
+            background: rgba(40, 167, 69, 0.1);
+            border: 1px solid rgba(40, 167, 69, 0.3);
+            color: #155724;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            flex: 1;
+        }
+        
+        .operations {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        
+        .btn-insert { background: linear-gradient(135deg, #28a745, #20c997); color: white; }
+        .btn-update { background: linear-gradient(135deg, #ffc107, #fd7e14); color: #212529; }
+        .btn-delete { background: linear-gradient(135deg, #dc3545, #e74c3c); color: white; }
+        .btn-refresh { background: linear-gradient(135deg, #17a2b8, #6f42c1); color: white; }
+        
+        .form-container {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 25px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            display: none;
+        }
+        
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 8px; font-weight: 600; color: #333; }
+        .form-group input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+        }
+        .form-group input:focus { outline: none; border-color: #667eea; }
+        .form-group input[readonly] { background-color: #f8f9fa; color: #6c757d; }
+        
+        .data-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            overflow: hidden;
+        }
+        
+        table { width: 100%; border-collapse: collapse; }
+        th {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 15px 12px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        td { padding: 12px; border-bottom: 1px solid #e9ecef; transition: background-color 0.3s ease; }
+        tr:hover td { background-color: rgba(102, 126, 234, 0.05); }
+        tr.selected td { background-color: rgba(102, 126, 234, 0.1); }
+        
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+        .alert-success { background: rgba(40, 167, 69, 0.1); color: #155724; border: 1px solid rgba(40, 167, 69, 0.3); }
+        .alert-error { background: rgba(220, 53, 69, 0.1); color: #721c24; border: 1px solid rgba(220, 53, 69, 0.3); }
+        
+        .table-info {
+            padding: 20px;
+            text-align: center;
+            color: #6c757d;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>👥 Clientes</h1>
+            <div class="subtitle">Gestión de Clientes - CRUD</div>
+        </div>
+        
+        <div class="controls">
+            <div class="top-row">
+                <a href="/" class="back-btn">
+                    ← Volver al Dashboard
+                </a>
+                <div class="crud-notice">
+                    ✏️ Gestión completa: Crear, leer, actualizar y eliminar clientes
+                </div>
+            </div>
+            
+            <div class="operations">
+                <button class="btn btn-refresh" onclick="loadClientes()">
+                    🔄 Actualizar
+                </button>
+                <button class="btn btn-insert" onclick="showInsertForm()">
+                    ➕ Nuevo Cliente
+                </button>
+                <button class="btn btn-update" onclick="showUpdateForm()" id="updateBtn" disabled>
+                    ✏️ Editar
+                </button>
+                <button class="btn btn-delete" onclick="deleteCliente()" id="deleteBtn" disabled>
+                    🗑️ Eliminar
+                </button>
+            </div>
+        </div>
+
+        <div id="alerts"></div>
+
+        <div class="form-container" id="formContainer">
+            <h3 id="formTitle">Nuevo Cliente</h3>
+            <form id="clienteForm">
+                <input type="hidden" id="clienteId">
+                <div class="form-group">
+                    <label for="nombre">Nombre Completo *</label>
+                    <input type="text" id="nombre" required>
+                </div>
+                <div class="form-group">
+                    <label for="direccion">Dirección</label>
+                    <input type="text" id="direccion" value="Carapungo" readonly>
+                    <small style="color: #6c757d;">La dirección se establece automáticamente según la sucursal</small>
+                </div>
+                <div class="form-group">
+                    <label for="telefono">Teléfono *</label>
+                    <input type="text" id="telefono" required>
+                </div>
+                <div class="operations">
+                    <button type="submit" class="btn btn-insert">💾 Guardar</button>
+                    <button type="button" class="btn" onclick="hideForm()" style="background: #6c757d; color: white;">❌ Cancelar</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="data-container">
+            <div class="table-info">
+                <h3>📋 Lista de Clientes</h3>
+                <p>Total: <span id="total-count">0</span> • Haz clic en una fila para seleccionarla</p>
+            </div>
+            
+            <div id="loading" style="text-align: center; padding: 40px; color: #6c757d;">
+                <div>🔄 Cargando clientes...</div>
+            </div>
+
+            <table id="clientesTable" style="display: none;">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Nombre</th>
+                        <th>Dirección</th>
+                        <th>Teléfono</th>
+                    </tr>
+                </thead>
+                <tbody id="clientesTableBody"></tbody>
+            </table>
+
+            <div id="no-data" style="display: none; text-align: center; padding: 40px; color: #6c757d;">
+                <h3>👥 No hay clientes registrados</h3>
+                <p>Usa el botón "Nuevo Cliente" para comenzar</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let selectedClienteId = null;
+        let isUpdating = false;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            loadClientes();
+        });
+
+        async function loadClientes() {
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('clientesTable').style.display = 'none';
+            document.getElementById('no-data').style.display = 'none';
+            clearSelection();
+
+            try {
+                const response = await fetch('/api/customers');
+                const result = await response.json();
+                
+                let clientes = [];
+                if (result.success && result.data) {
+                    clientes = result.data;
+                } else if (Array.isArray(result)) {
+                    clientes = result;
+                }
+                
+                const tbody = document.getElementById('clientesTableBody');
+                tbody.innerHTML = '';
+
+                if (clientes.length === 0) {
+                    document.getElementById('no-data').style.display = 'block';
+                } else {
+                    clientes.forEach(cliente => {
+                        const row = document.createElement('tr');
+                        const id = cliente.id_cliente || cliente.ID_CLIENTE;
+                        const nombre = cliente.nombre || cliente.NOMBRE;
+                        const direccion = cliente.direccion || cliente.DIRECCION;
+                        const telefono = cliente.telefono || cliente.TELEFONO;
+                        
+                        row.onclick = () => selectRow(id, row);
+                        row.innerHTML = `
+                            <td>${id}</td>
+                            <td>${nombre || 'N/A'}</td>
+                            <td>${direccion || 'N/A'}</td>
+                            <td>${telefono || 'N/A'}</td>
+                        `;
+                        tbody.appendChild(row);
+                    });
+                    document.getElementById('clientesTable').style.display = 'table';
+                }
+                document.getElementById('total-count').textContent = clientes.length;
+                showAlert('Datos cargados correctamente', 'success');
+            } catch (error) {
+                console.error('Error al cargar clientes:', error);
+                showAlert('Error al cargar clientes: ' + error.message, 'error');
+                document.getElementById('no-data').style.display = 'block';
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+            }
+        }
+
+        function showInsertForm() {
+            isUpdating = false;
+            document.getElementById('formTitle').textContent = 'Nuevo Cliente';
+            document.getElementById('clienteForm').reset();
+            document.getElementById('clienteId').value = '';
+            document.getElementById('direccion').value = 'Carapungo';
+            document.getElementById('formContainer').style.display = 'block';
+        }
+
+        async function showUpdateForm() {
+            if (!selectedClienteId) {
+                showAlert('Selecciona un cliente para actualizar', 'error');
+                return;
+            }
+
+            isUpdating = true;
+            try {
+                const response = await fetch(`/api/customers/${selectedClienteId}`);
+                const cliente = await response.json();
+
+                if (response.ok) {
+                    document.getElementById('formTitle').textContent = 'Actualizar Cliente';
+                    document.getElementById('clienteId').value = cliente.id_cliente || cliente.ID_CLIENTE;
+                    document.getElementById('nombre').value = cliente.nombre || cliente.NOMBRE || '';
+                    document.getElementById('direccion').value = cliente.direccion || cliente.DIRECCION || 'Carapungo';
+                    document.getElementById('telefono').value = cliente.telefono || cliente.TELEFONO || '';
+                    document.getElementById('formContainer').style.display = 'block';
+                } else {
+                    showAlert('Error al cargar cliente', 'error');
+                }
+            } catch (error) {
+                showAlert('Error de conexión', 'error');
+            }
+        }
+
+        async function deleteCliente() {
+            if (!selectedClienteId) {
+                showAlert('Selecciona un cliente para eliminar', 'error');
+                return;
+            }
+
+            if (!confirm('¿Estás seguro de que deseas eliminar este cliente?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/customers/${selectedClienteId}`, {
+                    method: 'DELETE'
+                });
+
+                const result = await response.json();
+                if (response.ok || result.success) {
+                    showAlert('Cliente eliminado correctamente', 'success');
+                    loadClientes();
+                } else {
+                    showAlert(result.error || 'Error al eliminar cliente', 'error');
+                }
+            } catch (error) {
+                showAlert('Error de conexión', 'error');
+            }
+        }
+
+        document.getElementById('clienteForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const clienteData = {
+                nombre: document.getElementById('nombre').value,
+                telefono: document.getElementById('telefono').value
+            };
+
+            try {
+                let response;
+                if (isUpdating) {
+                    response = await fetch(`/api/customers/${selectedClienteId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(clienteData)
+                    });
+                } else {
+                    response = await fetch('/api/customers', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(clienteData)
+                    });
+                }
+
+                const result = await response.json();
+                if (response.ok || result.success) {
+                    const message = isUpdating ? 'Cliente actualizado correctamente' : 'Cliente creado correctamente';
+                    showAlert(message, 'success');
+                    hideForm();
+                    loadClientes();
+                } else {
+                    showAlert(result.error || 'Error al guardar cliente', 'error');
+                }
+            } catch (error) {
+                showAlert('Error de conexión', 'error');
+            }
+        });
+
+        function selectRow(id, row) {
+            document.querySelectorAll('tr').forEach(r => r.classList.remove('selected'));
+            row.classList.add('selected');
+            selectedClienteId = id;
+            document.getElementById('updateBtn').disabled = false;
+            document.getElementById('deleteBtn').disabled = false;
+        }
+
+        function clearSelection() {
+            selectedClienteId = null;
+            document.getElementById('updateBtn').disabled = true;
+            document.getElementById('deleteBtn').disabled = true;
+            document.querySelectorAll('tr').forEach(r => r.classList.remove('selected'));
+        }
+
+        function hideForm() {
+            document.getElementById('formContainer').style.display = 'none';
+            clearSelection();
+        }
+
+        function showAlert(message, type) {
+            const alertsContainer = document.getElementById('alerts');
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type}`;
+            alert.textContent = message;
+            alertsContainer.appendChild(alert);
+            setTimeout(() => alert.remove(), 5000);
+        }
+    </script>
+</body>
+</html>

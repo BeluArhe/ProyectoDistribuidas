@@ -1,0 +1,168 @@
+
+
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auditoría Esclavo</title>
+    <link rel="stylesheet" href="/static/css/modern.css">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            color: white;
+        }
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+        .card {
+            background: rgba(255,255,255,0.97);
+            padding: 30px 20px 20px 20px;
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+            margin-bottom: 40px;
+        }
+        .modern-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+        }
+        .modern-table th {
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            color: white;
+            font-size: 1rem;
+            font-weight: 600;
+            padding: 12px 8px;
+            text-align: left;
+        }
+        .modern-table td {
+            padding: 10px 8px;
+            font-size: 1rem;
+            color: #333;
+            background: #f8f9fa;
+            border-bottom: 1px solid #ececec;
+            vertical-align: top;
+            max-width: 220px;
+            word-break: break-word;
+        }
+        .modern-table tr:last-child td {
+            border-bottom: none;
+        }
+        .no-results {
+            color: #764ba2;
+            text-align: center;
+            margin-top: 20px;
+            font-size: 1.1rem;
+        }
+        @media (max-width: 900px) {
+            .card { padding: 10px; }
+            .modern-table th, .modern-table td { font-size: 0.95rem; padding: 7px 4px; }
+        }
+        @media (max-width: 600px) {
+            .header h1 { font-size: 1.5rem; }
+            .modern-table th, .modern-table td { font-size: 0.85rem; }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Auditoría Esclavo</h1>
+            <p>Consulta el registro de auditoría esclavo y sus operaciones</p>
+        </div>
+        <div class="card" style="margin: 0 auto; max-width: 1200px;">
+            <table class="modern-table" id="auditoriaEsclavoTable">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Usuario</th>
+                        <th>Fecha</th>
+                        <th>Operación</th>
+                        <th>Tabla</th>
+                        <th>Anterior</th>
+                        <th>Nuevo</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Filas de auditoría esclavo -->
+                </tbody>
+            </table>
+            <div id="noResults" class="no-results" style="display:none;">No se encontraron registros.</div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const tableBody = document.querySelector('#auditoriaEsclavoTable tbody');
+            const noResults = document.getElementById('noResults');
+
+            function fetchAuditoriaEsclavo() {
+                fetch('/api/auditoria_esclavo')
+                    .then(res => res.json())
+                    .then(data => {
+                        tableBody.innerHTML = '';
+                        if (!data.success || !data.data || data.data.length === 0) {
+                            noResults.style.display = 'block';
+                        } else {
+                            noResults.style.display = 'none';
+                            data.data.forEach(row => {
+                                const tr = document.createElement('tr');
+                                // Formatear fecha y limitar longitud de anterior/nuevo
+                                const fecha = row.FECHA ? new Date(row.FECHA).toLocaleString('es-ES') : '';
+                                const anterior = row.ANTERIOR ? (row.ANTERIOR.length > 50 ? row.ANTERIOR.substring(0, 50) + '...' : row.ANTERIOR) : '-';
+                                const nuevo = row.NUEVO ? (row.NUEVO.length > 50 ? row.NUEVO.substring(0, 50) + '...' : row.NUEVO) : '-';
+                                let operacion = '';
+                                let color = '';
+                                switch(row.TIPO_OPERACION) {
+                                    case 'I': operacion = 'INSERT'; color = 'color: green;'; break;
+                                    case 'U': operacion = 'UPDATE'; color = 'color: orange;'; break;
+                                    case 'D': operacion = 'DELETE'; color = 'color: red;'; break;
+                                    default: operacion = row.TIPO_OPERACION || '-';
+                                }
+                                tr.innerHTML = `
+                                    <td>${row.ID_AUDITORIA}</td>
+                                    <td>${row.USER_NAME}</td>
+                                    <td>${fecha}</td>
+                                    <td style="${color}"><strong>${operacion}</strong></td>
+                                    <td>${row.NOMBRE_TABLE}</td>
+                                    <td title="${row.ANTERIOR || ''}">${anterior}</td>
+                                    <td title="${row.NUEVO || ''}">${nuevo}</td>
+                                `;
+                                tableBody.appendChild(tr);
+                            });
+                        }
+                    })
+                    .catch(() => {
+                        tableBody.innerHTML = '';
+                        noResults.style.display = 'block';
+                    });
+            }
+
+            fetchAuditoriaEsclavo();
+        });
+    </script>
+</body>
+</html>
